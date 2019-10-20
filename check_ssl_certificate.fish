@@ -20,10 +20,10 @@ function check_ssl_certificate
 
   if true | openssl s_client -connect $HOST:$PORT -servername $HOST </dev/null 2>/dev/null | \
     openssl x509 -noout -checkend $ONE_MONTH;
-    echo "$HOST:$PORT SSL Certificate is not expired within the next month"
+    echo "$HOST:$PORT SSL Certificate is ok."
     return 0
   else
-    echo "$HOST:$PORT SSL Certificate is either absent or expired within the next month"
+    echo "$HOST:$PORT SSL Certificate is not ok: either absent or will expire within the next month."
     return 1
   end
 end
