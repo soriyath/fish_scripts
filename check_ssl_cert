@@ -1,0 +1,74 @@
+#!/usr/bin/env fish
+# see: https://unix.stackexchange.com/questions/234970/script-to-check-if-ssl-certificate-is-valid#answer-234975
+
+set --local DISPLAY_HELP 0
+set --local CERTIFICATE_VALID 0
+set --local CERTIFICATE_INVALID_ERROR 1
+set --local ARGUMENT_MISSING_ERROR 2
+set --local mutex_flags --exclusive help,host --exclusive help,port
+set --local options --name=check_ssl_cert --max-args=2 $mutex_flags 'h/help'
+set --local option_specs 'H/host=' 'p/port=!_validate_int --min 0 --max 65535' 'd/days=!_validate_int --min 0 --max 3650' 'v/verbose'
+
+function print_usage
+    echo "Usage: check_ssl_cert [OPTIONS]"
+    echo "       checks the validity of the SSL certificate of the given host on the given port for a given time period"
+    echo ""
+    echo "Options:"
+    echo "  -h/--help       prints help and exits with code $DISPLAY_HELP"
+    echo "  -H/--host        the host to test, mandatory"
+    echo "  -p/--port       the port of the host to test, defaults to 443"
+    echo "  -d/--days       the SSL certificate validity duration to check in days, defaults to 30 days, max 10 years"
+    echo "  -v/--verbose    prints out more information"
+    echo ""
+    echo "Exit codes:"
+    echo "  0 returned if the host has a valid SSL certificat on given port for the given time period (defaults to 30 days)"
+    echo "  0 returned when displaying the help message"
+    echo "  1 returned when the host doesn't provide a valid SSL certificate on given port and for the given time period"
+    echo "  2 returned when some mandatory arguments are missing or when preconditions are not met"
+    echo "  read them by running: echo \$status"
+end
+
+argparse $options $option_specs -- $argv
+or begin
+    echo "Error $ARGUMENT_MISSING_ERROR: preconditions are not met. See usage."
+    print_usage
+    exit $ARGUMENT_MISSING_ERROR
+end
+
+if set --query _flag_help
+    print_usage
+    exit $DISPLAY_HELP
+end
+
+if not set --query _flag_host
+    echo "Error $ARGUMENT_MISSING_ERROR: Missing argument host to test. See usage."
+    print_usage
+    exit $ARGUMENT_MISSING_ERROR
+end
+
+set --query _flag_port
+or set --local _flag_port 443
+
+set --query _flag_days
+or set --local _flag_days 30
+set --local DURATION (math "$_flag_days * 86400") # convert days into seconds
+
+if set --query _flag_verbose
+    echo "duration is: $DURATION seconds ($_flag_days days)"
+    echo "checking SSL certificate validity for the next $_flag_days days of host $_flag_host on port $_flag_port..."
+end
+
+if openssl s_client -connect "$_flag_host:$_flag_port" -servername "$_flag_host" </dev/null 2>/dev/null | \
+        openssl x509 -noout -checkend $DURATION
+    if set --query _flag_verbose
+        echo "$_flag_host:$_flag_port: SSL Certificate is ok for the next $_flag_days days."
+    end
+
+    exit $CERTIFICATE_VALID
+else
+    if set --query _flag_verbose
+        echo "$_flag_host:$_flag_port: SSL Certificate is not ok: either absent or will expire within the next $_flag_days days."
+    end
+
+    exit $CERTIFICATE_INVALID_ERROR
+end
