@@ -13,10 +13,13 @@ Make a symbolic link in Fish's functions directory:
 
 ### usage
 
-run `check_ssl_certificate hostname port`
-e.g. `check_ssl_certificate www.google.com 443`
+run `check_ssl_certificate -u hostname -v`
+e.g. `check_ssl_certificate -u www.google.com -v`
+
+run `check_ssl_certificate -h` to check all the options
+and `check_ssl_certificate -c` to check return codes.
 
 this will yield `$status 0` if certificate is not expired<br />
-or `$status 1` if there is an error
-or `$status 2` if you forgot to give the hostname or port you want to check...
+or `$status 1` if the certificate is invalid or expires within the given time span (defaults to 30 days)
+or `$status 2` if you forgot to give the hostname you want to check (the port defaults to 443)...
 
